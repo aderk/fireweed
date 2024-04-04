@@ -1,0 +1,48 @@
+name: Test and Run
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+jobs:
+  test-examples:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      LLVM_VERSION: 17
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: "Setup conda env (base)"
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: 3.11
+          auto-activate-base: true
+
+      - name: "Install mojo"
+        run: |
+          curl https://get.modular.com | sh - && \
+          modular auth ${{secrets.MODULAR_AUTH}} && \
+          modular install --install-version 24.2.0 mojo
+
+      - name: "Setup conda env"
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: 3.11
+          activate-environment: base
+      
+      - name: "Install pip deps"
+        run: pip install rbloom
+
+      - name: "Run main"
+        run: |
+          export MODULAR_HOME="/home/runner/.modular"
+          export PATH="/home/runner/.modular/pkg/packages.modular.com_mojo/bin:$PATH"
+          export MOJO_PYTHON_LIBRARY="$(find $CONDA_PREFIX/lib -iname 'libpython*.[s,d]*' | sort -r | head -n 1)"
+          mojo run main.🔥

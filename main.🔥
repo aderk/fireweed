@@ -1,0 +1,70 @@
+from python import Python
+import bloom
+import benchmark
+import time
+import testing
+
+# TODO: Get ELEMENTS to work as a parameter, alias ELEMENTS = 10_000_000
+# Must edit on lines ~29-30.
+
+fn main() raises:
+    run_python()
+    test_mojo()
+    run_mojo()
+    
+
+fn run_python() raises:
+    print("===rbloom/python results===")
+    Python.add_to_path(".")
+    var bloompy = Python.import_module("bloompy")
+    bloompy.run_python_benchmark(10_000_000)
+
+fn run_mojo():
+    print("===mojo results===")
+    var report = benchmark.run[bloom_mojo_single_run]()
+    report.print()
+
+fn bloom_mojo_single_run():
+    var bf = bloom.Bloom[
+        bloom.filter_size(10_000_000, 0.01),
+        bloom.num_hash_funcs(10_000_000, 0.01),
+        ]()
+
+    for i in range(10_000_000):
+        # match python impl to avoid special-case int hashing.
+        bf.add(i + 0.5) 
+    
+    for i in range(10_000_000):
+        var _unused = i + 0.5 in bf
+        benchmark.keep(_unused)
+
+
+fn test_mojo() raises:
+    var bf = bloom.Bloom[
+        bloom.filter_size(10_000_000, 0.01),
+        bloom.num_hash_funcs(10_000_000, 0.01), 
+        ]()
+    print("num_hash_funcs=",bloom.num_hash_funcs(10_000_000, 0.01))
+    print("filter_size_total_bits=", bloom.filter_size(10_000_000, 0.01)*64)
+
+
+    for i in range(0, 10_000_000 * 2, 2):
+        bf.add(i + 0.5)  
+    
+    for i in range(0, 10_000_000 * 2, 2):
+        testing.assert_true(i + 0.5 in bf, "did not find value when expected:" + str(i+0.5))
+    
+    var trues = 0
+    for i in range(1, 10_000_000 * 2, 2):
+        if i+0.5 in bf:
+            trues += 1
+    testing.assert_true(trues / 10_000_000 < 0.10, "found too many false positives: " + str(trues))
+
+
+    
+
+
+        
+
+
+

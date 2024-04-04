@@ -1,0 +1,88 @@
+import math
+from collections.vector import InlinedFixedVector
+
+struct Bloom[filter_size_64bits: Int, num_hashes: Int]():
+    """Implements a bloom filter with addition and probabilistic containment.
+    
+     This provides small space, only true negatives for containment, and some
+     false positives. 
+     
+    Parameters:
+        filter_size_64bits: Internal state size in 64bit increments.
+        num_hashes: Number of buckets/indicies in the filter to fill per addition.
+    """
+
+    # TODO: aliases cannot access aliases
+    # TODO: Add aliases/params for chunk_type, simdwidth, chunk_size
+    var _state: DTypePointer[DType.uint64]
+
+    fn __init__(inout self):
+        # TODO: Add destructor or determine not necessary.
+        self._state = self._state.alloc(filter_size_64bits)
+        memset_zero(self._state, filter_size_64bits)
+    
+    fn __del__(owned self):
+        self._state.free()
+    
+    @always_inline
+    fn add[T: Hashable](inout self, el: T):
+        """Adds an element to the bloom filter."""
+        var idxs = self._generate_indicies(el)
+        @unroll(4)
+        for i in range(num_hashes):
+            var bit_loc = idxs[i]
+            var filter_chunk = bit_loc // 64
+            var loc_within_chunk = bit_loc % 64
+            self._state[filter_chunk.to_int()] |= ( 1 << loc_within_chunk)
+
+    @always_inline
+    fn __contains__[T: Hashable](self, el: T) -> Bool:
+        """Returns containment status w/ false positives."""
+        var idxs = self._generate_indicies(el)
+        @unroll(4)
+        for i in range(num_hashes):
+            var bit_loc = idxs[i]
+            var filter_chunk = bit_loc // 64
+            var loc_within_chunk = bit_loc % 64
+            if (self._state[filter_chunk.to_int()] & (UInt64(1) << loc_within_chunk)) == UInt64(0):
+                return False
+        return True
+
+    @always_inline
+    fn _generate_indicies[T: Hashable](self, el: T) -> InlinedFixedVector[UInt64, num_hashes]:
+        # Generates num_hashes indicies between [0,64*filter_size).
+        # Linear Congruential Generator params taken from https://nuclear.llnl.gov/CNP/rng/rngman/node4.html
+        var a = 2862933555777941757
+        var b = 3037000493
+        var ret = InlinedFixedVector[UInt64, num_hashes](num_hashes)
+        var entropy: UInt64 = hash(el)
+        @unroll(4)
+        for i in range(num_hashes):
+            # MUSING: I think I can use __setitem__ but it won't change the size of ret.
+            ret[i] = (entropy % (filter_size_64bits*64)).to_int()
+            entropy = a * entropy + b
+        return ret
+
+
+# TODO: Move these fn's to a class method `from_expectation`. It proved
+# difficult to have an unbound return type on a class method.
+@parameter
+fn filter_size(expected_items: Int, false_pos_rate: Float64) -> Int:
+    # Calculates how many bits to use in the filter. Rounds up in simd_width increments.
+    # TODO: Add citation for formula
+    # TODO: Why is math.log() so hard to resolve types for!?!
+    var log2 = math.log(Float64(2.0))
+    var raw_bit_length = -1 * (expected_items * math.log(false_pos_rate) / log2**2).to_int()
+    var ret = raw_bit_length // 64 + 1
+    return ret
+    
+@parameter
+fn num_hash_funcs(expected_items: Int, false_pos_rate: Float64) -> Int:
+    # Number of bits to set, each with a different hash func, commonly called `k`.
+    # TODO: Add citation for formula.
+    # HACK: Use SIMD type by rounding to powers of 2.
+    var filter_size_64bits = filter_size(expected_items, false_pos_rate)
+    var log2 = math.log(Float64(2.0))
+    var ret = (filter_size_64bits * 64 / expected_items) * log2
+    return ret.to_int()
+
