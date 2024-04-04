@@ -6,8 +6,6 @@ A toy project of trying out Mojo🔥 with a Bloom filter. Why a Bloom filter?
  * Useful
  * Extendable to Cuckoo, kMinHash, HyperLogLog(++), Counting Bloom Filters, etc.
 
-This project borrows heavily from https://github.com/KenanHanke/rbloom, which is much more production-worthy and better commented/robust/tested.
-
 # Installation And Running
 1. Install Mojo
 2. Install python (probably via miniconda)
@@ -48,3 +46,5 @@ Slowest Mean: 0.61287924999999999
  * Performance profiling
  * Write a real test suite 
 
+# Citations
+This project borrows heavily from https://github.com/KenanHanke/rbloom, which is very readable and well designed. Bloom filters were originally proposed in [(Bloom, 1970)](https://dl.acm.org/doi/10.1145/362686.362692). 
