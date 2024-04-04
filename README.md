@@ -16,7 +16,7 @@ This project borrows heavily from https://github.com/KenanHanke/rbloom, which is
 5. mojo run main.🔥
 
 # Benchmark Results
-Benchmarks always have some unfairness, so take these with a grain of salt. This compares python with a rust library to mojo with a mojo library, which is very much apples-to-oranges.
+Benchmarks always have some unfairness, so take these with a grain of salt. This compares python with a rust library to mojo with a mojo library, which is very much apples-to-oranges. Disclaimers aside, for 10M insertions and membership checks. rbloom/python takes about 1.7s and this Mojo implementation takes about 0.6s.
 
 ```
 alan@mbalan ~/C/fireweed (main) [1]> mojo run main.🔥           (py310) 
